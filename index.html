@@ -1,0 +1,1167 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>NEON RIFT // REALM & SERVER SIMULATOR</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@500;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg-void: #050814;
+      --bg-panel: rgba(10, 17, 38, 0.84);
+      --cyan: #00f5ff;
+      --purple: #a855f7;
+      --pink: #ff2a85;
+      --emerald: #22ff88;
+      --amber: #ffbe0b;
+    }
+
+    * {
+      box-sizing: border-box;
+      user-select: none;
+      -webkit-user-select: none;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    html, body {
+      margin: 0;
+      padding: 0;
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      background: radial-gradient(circle at 35% 30%, #11204a 0%, #070d22 55%, #03050e 100%);
+      font-family: 'Inter', system-ui, -apple-system, sans-serif;
+      color: #f1f5f9;
+    }
+
+    .mono {
+      font-family: 'JetBrains Mono', monospace;
+    }
+
+    .glass {
+      background: var(--bg-panel);
+      backdrop-filter: blur(14px);
+      -webkit-backdrop-filter: blur(14px);
+      border: 1px solid rgba(0, 245, 255, 0.18);
+      box-shadow: 0 12px 32px rgba(0, 0, 0, 0.45), inset 0 1px 0 rgba(255, 255, 255, 0.06);
+    }
+
+    .title-grad {
+      background: linear-gradient(95deg, #00f5ff 0%, #a855f7 52%, #ff2a85 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    .scroll-thin::-webkit-scrollbar {
+      width: 5px;
+      height: 5px;
+    }
+    .scroll-thin::-webkit-scrollbar-track {
+      background: rgba(15, 23, 42, 0.35);
+      border-radius: 999px;
+    }
+    .scroll-thin::-webkit-scrollbar-thumb {
+      background: rgba(0, 245, 255, 0.3);
+      border-radius: 999px;
+    }
+
+    .speed-btn.active {
+      background: linear-gradient(135deg, #00f5ff 0%, #3b82f6 100%);
+      color: #030612;
+      font-weight: 800;
+      box-shadow: 0 0 16px rgba(0, 245, 255, 0.45);
+    }
+
+    .tab-btn.active {
+      background: rgba(0, 245, 255, 0.16);
+      border-color: #00f5ff;
+      color: #ffffff;
+    }
+
+    .action-card {
+      background: rgba(15, 25, 56, 0.72);
+      border: 1px solid rgba(148, 163, 184, 0.18);
+      transition: transform 0.12s ease, border-color 0.12s ease, background 0.12s ease;
+    }
+
+    .action-card:hover:not(:disabled) {
+      transform: translateY(-1px);
+      border-color: rgba(0, 245, 255, 0.55);
+      background: rgba(21, 36, 78, 0.9);
+    }
+
+    .action-card:active:not(:disabled) {
+      transform: scale(0.98);
+    }
+
+    .action-card:disabled {
+      opacity: 0.48;
+      cursor: not-allowed;
+    }
+  </style>
+</head>
+<body class="flex flex-col h-screen w-screen overflow-hidden">
+  <!-- TOP TELEMETRY & SPEED CONTROL BAR -->
+  <header class="shrink-0 z-20 px-2.5 pt-2.5 pb-1.5">
+    <div class="max-w-[1600px] mx-auto glass rounded-2xl px-3 py-2 flex flex-wrap items-center justify-between gap-2">
+      <!-- Brand + Active Event Pill -->
+      <div class="flex items-center gap-2.5 min-w-0">
+        <div>
+          <div class="flex items-center gap-2">
+            <span class="title-grad font-black text-sm sm:text-base tracking-tight">NEON RIFT</span>
+            <span class="mono text-[10px] px-2 py-0.5 rounded-full bg-cyan-400/12 border border-cyan-400/30 text-cyan-300 font-bold">
+              REALM & SERVER SIM
+            </span>
+          </div>
+          <div id="activeEventBanner" class="text-[11px] mono text-emerald-300 truncate">
+            Etkinlik: Normal Akış • Hub Stabil
+          </div>
+        </div>
+      </div>
+
+      <!-- Core Economy Counters -->
+      <div class="flex items-center gap-2 sm:gap-3 flex-wrap">
+        <div class="px-2.5 py-1 rounded-xl bg-amber-400/10 border border-amber-400/25">
+          <div class="text-[9px] mono uppercase text-amber-300/80 font-bold">Coin</div>
+          <div id="hudCoins" class="mono text-xs sm:text-sm font-black text-amber-300">1,250</div>
+        </div>
+        <div class="px-2.5 py-1 rounded-xl bg-purple-500/12 border border-purple-400/25">
+          <div class="text-[9px] mono uppercase text-purple-300/80 font-bold">Gem</div>
+          <div id="hudGems" class="mono text-xs sm:text-sm font-black text-purple-300">25</div>
+        </div>
+        <div class="px-2.5 py-1 rounded-xl bg-cyan-400/10 border border-cyan-400/25">
+          <div class="text-[9px] mono uppercase text-cyan-300/80 font-bold">İtibar</div>
+          <div id="hudRep" class="mono text-xs sm:text-sm font-black text-cyan-300">100</div>
+        </div>
+
+        <!-- Server Health Telemetry -->
+        <div class="hidden md:flex items-center gap-2.5 px-3 py-1 rounded-xl bg-white/5 border border-white/10">
+          <div>
+            <div class="text-[9px] mono text-slate-400">OYUNCU</div>
+            <div id="hudPlayers" class="mono text-xs font-extrabold text-white">0/40</div>
+          </div>
+          <div class="h-5 w-px bg-white/10"></div>
+          <div>
+            <div class="text-[9px] mono text-slate-400">TPS</div>
+            <div id="hudTps" class="mono text-xs font-extrabold text-emerald-400">20.0</div>
+          </div>
+          <div class="h-5 w-px bg-white/10"></div>
+          <div>
+            <div class="text-[9px] mono text-slate-400">PING</div>
+            <div id="hudPing" class="mono text-xs font-extrabold text-cyan-300">18ms</div>
+          </div>
+          <div class="h-5 w-px bg-white/10"></div>
+          <div>
+            <div class="text-[9px] mono text-slate-400">CPU/RAM</div>
+            <div id="hudLoad" class="mono text-xs font-extrabold text-amber-300">24% / 31%</div>
+          </div>
+        </div>
+
+        <!-- Speed & Pause Controls -->
+        <div class="flex items-center gap-1 bg-slate-950/70 p-1 rounded-xl border border-white/10">
+          <button data-speed="0" class="speed-btn px-2 py-1 rounded-lg mono text-[11px] font-bold text-slate-300 hover:text-white">⏸</button>
+          <button data-speed="1" class="speed-btn active px-2 py-1 rounded-lg mono text-[11px] font-bold">1x</button>
+          <button data-speed="2" class="speed-btn px-2 py-1 rounded-lg mono text-[11px] font-bold text-slate-300 hover:text-white">2x</button>
+          <button data-speed="4" class="speed-btn px-2 py-1 rounded-lg mono text-[11px] font-bold text-slate-300 hover:text-white">4x</button>
+        </div>
+
+        <!-- Save / Reset / Sound -->
+        <button id="saveBtn" title="Manuel Kaydet"
+          class="px-2.5 py-1.5 rounded-xl bg-emerald-500/15 border border-emerald-400/30 mono text-[11px] font-bold text-emerald-300 hover:bg-emerald-500/25 active:scale-95 transition">
+          KAYDET
+        </button>
+        <button id="resetBtn" title="Sıfırla"
+          class="px-2.5 py-1.5 rounded-xl bg-rose-500/15 border border-rose-400/30 mono text-[11px] font-bold text-rose-300 hover:bg-rose-500/25 active:scale-95 transition">
+          SIFIRLA
+        </button>
+        <button id="muteBtn" aria-label="Sesi Aç veya Kapat"
+          class="p-1.5 rounded-xl bg-white/5 border border-white/10 hover:border-cyan-400/40 active:scale-95 transition">
+          <svg id="iconSoundOn" class="w-4 h-4 text-cyan-300" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M15.536 8.464a5 5 0 010 7.072m2.828-9.9a9 9 0 010 12.728M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z"/>
+          </svg>
+          <svg id="iconSoundOff" class="w-4 h-4 text-slate-400 hidden" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z"/>
+            <path stroke-linecap="round" stroke-linejoin="round" d="M17 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2"/>
+          </svg>
+        </button>
+      </div>
+    </div>
+
+    <!-- Compact Mobile Telemetry Strip -->
+    <div class="max-w-[1600px] mx-auto mt-1.5 flex md:hidden items-center justify-between gap-2 glass rounded-xl px-3 py-1 text-[11px] mono">
+      <span>Oyuncu: <strong id="mPlayers" class="text-white">0/40</strong></span>
+      <span>TPS: <strong id="mTps" class="text-emerald-400">20.0</strong></span>
+      <span>Ping: <strong id="mPing" class="text-cyan-300">18ms</strong></span>
+      <span>Yük: <strong id="mLoad" class="text-amber-300">24%</strong></span>
+    </div>
+  </header>
+
+  <!-- MAIN SPLIT WORKSPACE (LIVE HUB CANVAS + COMMAND & LOGS PANEL) -->
+  <main class="flex-1 min-h-0 px-2.5 pb-2.5 max-w-[1600px] w-full mx-auto grid grid-cols-1 lg:grid-cols-12 gap-2.5 overflow-hidden">
+    <!-- Left / Top: Living Hub Canvas -->
+    <section class="lg:col-span-7 xl:col-span-8 min-h-[260px] h-full glass rounded-2xl relative overflow-hidden flex flex-col">
+      <canvas id="hubCanvas" class="w-full h-full block"></canvas>
+
+      <!-- Bottom Canvas Legend & Quick Spawn -->
+      <div class="pointer-events-none absolute inset-x-3 bottom-3 flex flex-wrap items-center justify-between gap-2">
+        <div class="glass rounded-xl px-2.5 py-1.5 flex flex-wrap items-center gap-2.5 text-[10px] mono">
+          <span class="flex items-center gap-1"><span class="w-2 h-2 rounded-full bg-cyan-400"></span>Spawn</span>
+          <span class="flex items-center gap-1"><span class="w-2 h-2 rounded-full bg-rose-500"></span>PvP Arena</span>
+          <span class="flex items-center gap-1"><span class="w-2 h-2 rounded-full bg-amber-400"></span>Kasalar & Dükkan</span>
+          <span class="flex items-center gap-1"><span class="w-2 h-2 rounded-full bg-emerald-400"></span>AFK Bölgesi</span>
+        </div>
+
+        <button id="boostTrafficBtn"
+          class="pointer-events-auto px-3 py-1.5 rounded-xl bg-cyan-400/20 hover:bg-cyan-400/30 border border-cyan-400/45 text-cyan-200 mono text-[11px] font-bold active:scale-95 transition">
+          +5 Oyuncu Davet Et (Ücretsiz)
+        </button>
+      </div>
+    </section>
+
+    <!-- Right / Bottom: Interactive Command Deck & Live Logs -->
+    <section class="lg:col-span-5 xl:col-span-4 min-h-0 h-full glass rounded-2xl p-3 flex flex-col gap-2.5 overflow-hidden">
+      <!-- Category Tabs -->
+      <div class="grid grid-cols-4 gap-1.5 shrink-0">
+        <button data-tab="hardware" class="tab-btn active py-2 px-1 rounded-xl border border-white/10 mono text-[11px] font-bold text-slate-300">
+          Donanım
+        </button>
+        <button data-tab="hub" class="tab-btn py-2 px-1 rounded-xl border border-white/10 mono text-[11px] font-bold text-slate-300">
+          Hub & NPC
+        </button>
+        <button data-tab="economy" class="tab-btn py-2 px-1 rounded-xl border border-white/10 mono text-[11px] font-bold text-slate-300">
+          Ekonomi
+        </button>
+        <button data-tab="staff" class="tab-btn py-2 px-1 rounded-xl border border-white/10 mono text-[11px] font-bold text-slate-300">
+          Ekip & Olay
+        </button>
+      </div>
+
+      <!-- Scrollable Action Cards -->
+      <div id="actionList" class="flex-1 min-h-0 overflow-y-auto scroll-thin flex flex-col gap-2 pr-0.5"></div>
+
+      <!-- Live Server Console Logs -->
+      <div class="shrink-0 h-32 sm:h-36 rounded-xl bg-slate-950/80 border border-white/10 p-2.5 flex flex-col">
+        <div class="flex items-center justify-between mb-1.5 shrink-0">
+          <span class="mono text-[10px] uppercase tracking-wider text-cyan-300 font-bold">Canlı Sunucu Logları</span>
+          <span id="logCounter" class="mono text-[10px] text-slate-500">0 kayıt</span>
+        </div>
+        <div id="logFeed" class="flex-1 overflow-y-auto scroll-thin mono text-[11px] space-y-1 pr-1"></div>
+      </div>
+    </section>
+  </main>
+
+  <!-- Toast Notification (No alert()) -->
+  <div id="toast" class="pointer-events-none fixed bottom-5 left-1/2 -translate-x-1/2 z-50 opacity-0 translate-y-2 transition-all duration-200">
+    <div class="glass rounded-full px-4 py-2 text-xs mono font-bold text-cyan-200 border-cyan-400/40 shadow-lg">
+      <span id="toastMsg"></span>
+    </div>
+  </div>
+
+  <script>
+    /**
+     * NEON RIFT // REALM & SERVER SIMULATOR
+     * Self-contained single-file HTML5 server/realm hub simulation:
+     * - Live animated hub canvas with Spawn, PvP Arena, Crates/Shops, AFK Zone
+     * - Player avatars with custom ranks, speech bubbles, particles, TPS & rack load bars
+     * - Real-time simulation loop with 0x (pause), 1x, 2x, 4x speed controls
+     * - Economy (Coins, Gems, Reputation), Server Hardware (CPU, RAM, Network),
+     *   NPC Shops & Crates, Economy/Tax/Rank perks, Event triggers, Staff hiring
+     * - Procedural Web Audio sound effects + localStorage save/load
+     */
+    (() => {
+      const canvas = document.getElementById('hubCanvas');
+      const ctx = canvas.getContext('2d');
+
+      // DOM References
+      const hudCoins = document.getElementById('hudCoins');
+      const hudGems = document.getElementById('hudGems');
+      const hudRep = document.getElementById('hudRep');
+      const hudPlayers = document.getElementById('hudPlayers');
+      const hudTps = document.getElementById('hudTps');
+      const hudPing = document.getElementById('hudPing');
+      const hudLoad = document.getElementById('hudLoad');
+      const mPlayers = document.getElementById('mPlayers');
+      const mTps = document.getElementById('mTps');
+      const mPing = document.getElementById('mPing');
+      const mLoad = document.getElementById('mLoad');
+      const activeEventBanner = document.getElementById('activeEventBanner');
+
+      const speedButtons = document.querySelectorAll('.speed-btn');
+      const tabButtons = document.querySelectorAll('.tab-btn');
+      const actionList = document.getElementById('actionList');
+      const logFeed = document.getElementById('logFeed');
+      const logCounter = document.getElementById('logCounter');
+      const boostTrafficBtn = document.getElementById('boostTrafficBtn');
+      const saveBtn = document.getElementById('saveBtn');
+      const resetBtn = document.getElementById('resetBtn');
+      const muteBtn = document.getElementById('muteBtn');
+      const iconSoundOn = document.getElementById('iconSoundOn');
+      const iconSoundOff = document.getElementById('iconSoundOff');
+      const toast = document.getElementById('toast');
+      const toastMsg = document.getElementById('toastMsg');
+
+      // Toast helper (replaces alert)
+      let toastTimer = null;
+      function showToast(msg) {
+        toastMsg.textContent = msg;
+        toast.classList.remove('opacity-0', 'translate-y-2');
+        toast.classList.add('opacity-100', 'translate-y-0');
+        clearTimeout(toastTimer);
+        toastTimer = setTimeout(() => {
+          toast.classList.add('opacity-0', 'translate-y-2');
+          toast.classList.remove('opacity-100', 'translate-y-0');
+        }, 1800);
+      }
+
+      // =========================================================================
+      // PROCEDURAL WEB AUDIO ENGINE
+      // =========================================================================
+      class RealmAudio {
+        constructor() {
+          this.ctx = null;
+          this.muted = false;
+        }
+
+        ensure() {
+          if (this.muted) return null;
+          if (!this.ctx) {
+            const AudioCtx = window.AudioContext || window.webkitAudioContext;
+            if (!AudioCtx) return null;
+            this.ctx = new AudioCtx();
+          }
+          if (this.ctx.state === 'suspended') {
+            this.ctx.resume().catch(() => {});
+          }
+          return this.ctx;
+        }
+
+        toggleMute() {
+          this.muted = !this.muted;
+          iconSoundOn.classList.toggle('hidden', this.muted);
+          iconSoundOff.classList.toggle('hidden', !this.muted);
+          showToast(this.muted ? 'Ses Sessize Alındı' : 'Sunucu Sesleri Aktif');
+          if (!this.muted) {
+            this.ensure();
+            this.playBeep(660, 0.08);
+          }
+        }
+
+        playBeep(freq = 520, dur = 0.09, type = 'triangle') {
+          const ctx = this.ensure();
+          if (!ctx) return;
+          const now = ctx.currentTime;
+          const osc = ctx.createOscillator();
+          const gain = ctx.createGain();
+          osc.type = type;
+          osc.frequency.setValueAtTime(freq, now);
+          osc.frequency.exponentialRampToValueAtTime(freq * 1.25, now + dur);
+          gain.gain.setValueAtTime(0.08, now);
+          gain.gain.exponentialRampToValueAtTime(0.001, now + dur + 0.01);
+          osc.connect(gain);
+          gain.connect(ctx.destination);
+          osc.start(now);
+          osc.stop(now + dur + 0.02);
+        }
+
+        playEventAlert(bad = false) {
+          const ctx = this.ensure();
+          if (!ctx) return;
+          const notes = bad ? [330, 261.63, 196] : [440, 554.37, 659.25, 880];
+          notes.forEach((f, idx) => {
+            const now = ctx.currentTime + idx * 0.07;
+            const osc = ctx.createOscillator();
+            const gain = ctx.createGain();
+            osc.type = bad ? 'sawtooth' : 'sine';
+            osc.frequency.setValueAtTime(f, now);
+            gain.gain.setValueAtTime(0.07, now);
+            gain.gain.exponentialRampToValueAtTime(0.001, now + 0.18);
+            osc.connect(gain);
+            gain.connect(ctx.destination);
+            osc.start(now);
+            osc.stop(now + 0.19);
+          });
+        }
+      }
+
+      const audio = new RealmAudio();
+      muteBtn.addEventListener('click', () => audio.toggleMute());
+
+      // =========================================================================
+      // SIMULATION STATE & PERSISTENCE (localStorage)
+      // =========================================================================
+      const SAVE_KEY = 'neon_rift_realm_sim_v1';
+
+      const DEFAULT_STATE = {
+        coins: 1250,
+        gems: 25,
+        rep: 100,
+        speed: 1,
+        activeTab: 'hardware',
+        // Hardware levels
+        cpuLv: 1,
+        ramLv: 1,
+        netLv: 1,
+        // Hub & NPC levels
+        shopLv: 1,
+        crateLv: 1,
+        arenaLv: 1,
+        // Economy & Rank perks
+        taxRate: 8, // %
+        vipPerkLv: 1,
+        afkBonusLv: 1,
+        // Staff counts
+        modCount: 1,
+        builderCount: 0,
+        // Active event
+        eventName: 'Normal Akış',
+        eventDesc: 'Hub Stabil',
+        eventTimer: 0,
+        eventEffect: 'normal',
+        // Stats
+        totalJoins: 0
+      };
+
+      function loadState() {
+        try {
+          const raw = JSON.parse(localStorage.getItem(SAVE_KEY) || 'null');
+          if (!raw || typeof raw !== 'object') return { ...DEFAULT_STATE };
+          return { ...DEFAULT_STATE, ...raw, speed: Number.isFinite(raw.speed) ? raw.speed : 1 };
+        } catch (_) {
+          return { ...DEFAULT_STATE };
+        }
+      }
+
+      function saveState() {
+        try {
+          localStorage.setItem(SAVE_KEY, JSON.stringify(sim));
+          showToast('💾 Sunucu durumu kaydedildi');
+          audio.playBeep(740, 0.08);
+        } catch (_) {
+          showToast('Kayıt alanı erişilemedi');
+        }
+      }
+
+      let sim = loadState();
+      let logs = [];
+      let avatars = [];
+      let particles = [];
+      let eventCooldown = 14;
+
+      function addLog(tag, msg, color = 'text-cyan-300') {
+        const now = new Date();
+        const timeStr = now.toTimeString().slice(0, 8);
+        logs.unshift({ timeStr, tag, msg, color });
+        if (logs.length > 40) logs.pop();
+        renderLogs();
+      }
+
+      function renderLogs() {
+        logCounter.textContent = `${logs.length} kayıt`;
+        logFeed.innerHTML = logs
+          .map(
+            (l) => `
+            <div class="leading-snug">
+              <span class="text-slate-500">[${l.timeStr}]</span>
+              <span class="${l.color} font-bold">[${l.tag}]</span>
+              <span class="text-slate-200">${l.msg}</span>
+            </div>
+          `
+          )
+          .join('');
+      }
+
+      // =========================================================================
+      // RESPONSIVE CANVAS & LIVING HUB ZONES
+      // =========================================================================
+      let canvasW = 800;
+      let canvasH = 500;
+      let dpr = Math.min(window.devicePixelRatio || 1, 2);
+
+      const ZONES = {
+        spawn: { name: 'Spawn', rx: 0.22, ry: 0.28, color: '#00f5ff' },
+        arena: { name: 'PvP Arena', rx: 0.74, ry: 0.28, color: '#ff2a85' },
+        shops: { name: 'Kasalar & Dükkan', rx: 0.26, ry: 0.74, color: '#ffbe0b' },
+        afk: { name: 'AFK Bölgesi', rx: 0.75, ry: 0.74, color: '#22ff88' }
+      };
+
+      function resizeCanvas() {
+        const rect = canvas.getBoundingClientRect();
+        canvasW = Math.max(280, rect.width);
+        canvasH = Math.max(240, rect.height);
+        dpr = Math.min(window.devicePixelRatio || 1, 2);
+
+        canvas.width = Math.floor(canvasW * dpr);
+        canvas.height = Math.floor(canvasH * dpr);
+        ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      }
+
+      window.addEventListener('resize', resizeCanvas);
+      resizeCanvas();
+
+      const RANKS = [
+        { name: 'Üye', color: '#94a3b8' },
+        { name: 'VIP', color: '#00f5ff' },
+        { name: 'MVP+', color: '#a855f7' },
+        { name: 'Rift Lordu', color: '#ff2a85' }
+      ];
+
+      const CHAT_LINES = [
+        'gg wp arena!',
+        'Kasa açtım, efsane çıktı!',
+        'TPS yağ gibi akıyor 🔥',
+        'AFK kasıyorum beyler',
+        'VIP rütbe çok iyi',
+        'Drop party var mı?',
+        'Dükkan fiyatları tatlı',
+        'GG!'
+      ];
+
+      function spawnAvatar(customName = null) {
+        const maxPlayers = getMaxPlayers();
+        if (avatars.length >= maxPlayers) return false;
+
+        const names = ['KaanRift', 'ZeynepX', 'EmreNova', 'DenizByte', 'ArdaVoid', 'SelinHex', 'KeremPulse', 'MertSync'];
+        const name = customName || names[Math.floor(Math.random() * names.length)] + Math.floor(10 + Math.random() * 89);
+        const rankIdx = Math.min(RANKS.length - 1, Math.floor(Math.random() * (1 + sim.vipPerkLv * 0.45)));
+        const rank = RANKS[rankIdx];
+
+        const spawnPos = {
+          x: canvasW * ZONES.spawn.rx + (Math.random() - 0.5) * 34,
+          y: canvasH * ZONES.spawn.ry + (Math.random() - 0.5) * 34
+        };
+
+        avatars.push({
+          name,
+          rank: rank.name,
+          color: rank.color,
+          x: spawnPos.x,
+          y: spawnPos.y,
+          targetZone: 'arena',
+          tx: canvasW * ZONES.arena.rx,
+          ty: canvasH * ZONES.arena.ry,
+          speed: 55 + Math.random() * 35,
+          bubble: Math.random() < 0.45 ? CHAT_LINES[Math.floor(Math.random() * CHAT_LINES.length)] : '',
+          bubbleTimer: 3.5,
+          dwellTimer: 2 + Math.random() * 3
+        });
+
+        sim.totalJoins += 1;
+        return true;
+      }
+
+      function spawnBurst(x, y, color, count = 10) {
+        for (let i = 0; i < count; i++) {
+          const ang = (Math.PI * 2 * i) / count + Math.random() * 0.4;
+          const spd = 25 + Math.random() * 90;
+          particles.push({
+            x,
+            y,
+            vx: Math.cos(ang) * spd,
+            vy: Math.sin(ang) * spd,
+            color,
+            life: 0.45 + Math.random() * 0.35,
+            maxLife: 0.8
+          });
+        }
+      }
+
+      // Seed initial players
+      for (let i = 0; i < 8; i++) {
+        spawnAvatar();
+      }
+
+      // =========================================================================
+      // TELEMETRY CALCULATIONS (TPS, PING, CPU/RAM LOAD, MAX PLAYERS)
+      // =========================================================================
+      function getMaxPlayers() {
+        return 24 + sim.ramLv * 12 + sim.netLv * 6;
+      }
+
+      function getServerMetrics() {
+        const maxP = getMaxPlayers();
+        const curP = avatars.length;
+        const trafficRatio = curP / Math.max(1, maxP);
+
+        const cpuCapacity = 35 + sim.cpuLv * 26 + sim.modCount * 6;
+        const ramCapacity = 40 + sim.ramLv * 28;
+        const netCapacity = 40 + sim.netLv * 28;
+
+        const rawCpu = (curP * 1.45 + (sim.eventEffect === 'ddos' ? 42 : 0)) / (cpuCapacity / 55);
+        const rawRam = (curP * 1.3 + sim.builderCount * 4) / (ramCapacity / 55);
+        const rawNet = (curP * 1.2 + (sim.eventEffect === 'ddos' ? 50 : 0)) / (netCapacity / 55);
+
+        const cpuLoad = Math.min(99, Math.max(8, Math.round(rawCpu)));
+        const ramLoad = Math.min(99, Math.max(10, Math.round(rawRam)));
+        const netLoad = Math.min(99, Math.max(8, Math.round(rawNet)));
+
+        const overload = Math.max(0, (cpuLoad + netLoad) / 2 - 78);
+        const tps = Math.max(6.5, +(20.0 - overload * 0.38).toFixed(1));
+        const ping = Math.max(9, Math.round(12 + netLoad * 0.75 + (sim.eventEffect === 'ddos' ? 140 : 0) - sim.netLv * 1.5));
+
+        return { curP, maxP, cpuLoad, ramLoad, tps, ping };
+      }
+
+      // =========================================================================
+      // ACTION CATALOG (HARDWARE, HUB & NPC, ECONOMY, STAFF & EVENTS)
+      // =========================================================================
+      function getActionsForTab(tab) {
+        if (tab === 'hardware') {
+          const cpuCost = Math.round(260 * Math.pow(1.45, sim.cpuLv - 1));
+          const ramCost = Math.round(240 * Math.pow(1.45, sim.ramLv - 1));
+          const netCost = Math.round(280 * Math.pow(1.45, sim.netLv - 1));
+          return [
+            {
+              title: `CPU Çekirdeği Yükselt (Sv.${sim.cpuLv})`,
+              desc: 'Tick hızını korur, CPU yükünü düşürür ve saldırı/olay dayanıklılığını artırır.',
+              costText: `${cpuCost} Coin`,
+              canBuy: sim.coins >= cpuCost,
+              buy: () => {
+                sim.coins -= cpuCost;
+                sim.cpuLv += 1;
+                audio.playBeep(620, 0.1);
+                addLog('DONANIM', `CPU Sv.${sim.cpuLv} kuruldu! TPS kararlılığı arttı.`, 'text-cyan-300');
+              }
+            },
+            {
+              title: `RAM Modülü Ekle (Sv.${sim.ramLv})`,
+              desc: 'Maksimum eşzamanlı oyuncu kapasitesini +12 artırır.',
+              costText: `${ramCost} Coin`,
+              canBuy: sim.coins >= ramCost,
+              buy: () => {
+                sim.coins -= ramCost;
+                sim.ramLv += 1;
+                audio.playBeep(680, 0.1);
+                addLog('DONANIM', `RAM Sv.${sim.ramLv} genişletildi (+12 slot).`, 'text-purple-300');
+              }
+            },
+            {
+              title: `100Gbps Ağ Kartı (Sv.${sim.netLv})`,
+              desc: 'Ping süresini düşürür ve DDoS saldırılarına karşı kalkan sağlar.',
+              costText: `${netCost} Coin`,
+              canBuy: sim.coins >= netCost,
+              buy: () => {
+                sim.coins -= netCost;
+                sim.netLv += 1;
+                audio.playBeep(740, 0.1);
+                addLog('AĞ', `Ağ Kartı Sv.${sim.netLv} aktif! Ping düştü.`, 'text-emerald-300');
+              }
+            }
+          ];
+        }
+
+        if (tab === 'hub') {
+          const shopCost = Math.round(320 * Math.pow(1.42, sim.shopLv - 1));
+          const crateCost = Math.round(380 * Math.pow(1.45, sim.crateLv - 1));
+          const arenaCost = Math.round(350 * Math.pow(1.42, sim.arenaLv - 1));
+          return [
+            {
+              title: `NPC Dükkan Genişlet (Sv.${sim.shopLv})`,
+              desc: 'Dükkan bölgesindeki oyuncuların harcadığı Coin gelirini artırır.',
+              costText: `${shopCost} Coin`,
+              canBuy: sim.coins >= shopCost,
+              buy: () => {
+                sim.coins -= shopCost;
+                sim.shopLv += 1;
+                audio.playBeep(580, 0.1);
+                addLog('HUB', `NPC Dükkan Sv.${sim.shopLv} açıldı!`, 'text-amber-300');
+              }
+            },
+            {
+              title: `Neon Kasa İstasyonu (Sv.${sim.crateLv})`,
+              desc: 'Kasa açılışlarından elde edilen Gem ve İtibar kazancını yükseltir.',
+              costText: `${crateCost} Coin`,
+              canBuy: sim.coins >= crateCost,
+              buy: () => {
+                sim.coins -= crateCost;
+                sim.crateLv += 1;
+                audio.playBeep(760, 0.1);
+                addLog('HUB', `Neon Kasa Sv.${sim.crateLv} güncellendi!`, 'text-pink-400');
+              }
+            },
+            {
+              title: `PvP Arena Ligleri (Sv.${sim.arenaLv})`,
+              desc: 'Arena maçlarından gelen İtibar ve Coin ödüllerini katlar.',
+              costText: `${arenaCost} Coin`,
+              canBuy: sim.coins >= arenaCost,
+              buy: () => {
+                sim.coins -= arenaCost;
+                sim.arenaLv += 1;
+                audio.playBeep(640, 0.1);
+                addLog('ARENA', `PvP Arena Sv.${sim.arenaLv} ligleri başladı!`, 'text-rose-400');
+              }
+            }
+          ];
+        }
+
+        if (tab === 'economy') {
+          const taxCost = 180;
+          const vipCost = 8; // Gems
+          const afkCost = Math.round(300 * Math.pow(1.4, sim.afkBonusLv - 1));
+          return [
+            {
+              title: `Vergi Oranını Ayarla (Şu an %${sim.taxRate})`,
+              desc: 'Vergiyi %2 artırır (+Coin geliri, küçük itibar dengesi).',
+              costText: `${taxCost} Coin`,
+              canBuy: sim.coins >= taxCost,
+              buy: () => {
+                sim.coins -= taxCost;
+                sim.taxRate = sim.taxRate >= 22 ? 6 : sim.taxRate + 2;
+                sim.rep = Math.max(10, sim.rep - 2);
+                audio.playBeep(540, 0.08);
+                addLog('EKONOMİ', `Vergi oranı %${sim.taxRate} olarak ayarlandı.`, 'text-amber-300');
+              }
+            },
+            {
+              title: `VIP Rütbe Paketi (Sv.${sim.vipPerkLv})`,
+              desc: 'Daha fazla VIP/MVP+ oyuncu çeker ve Coin çarpanını artırır.',
+              costText: `${vipCost} Gem`,
+              canBuy: sim.gems >= vipCost,
+              buy: () => {
+                sim.gems -= vipCost;
+                sim.vipPerkLv += 1;
+                sim.rep += 15;
+                audio.playBeep(880, 0.12);
+                addLog('VIP', `VIP Rütbe Paketi Sv.${sim.vipPerkLv} yayınlandı!`, 'text-purple-300');
+              }
+            },
+            {
+              title: `AFK Bölge Kristali (Sv.${sim.afkBonusLv})`,
+              desc: 'AFK bölgesinde bekleyen oyunculardan pasif Gem üretir.',
+              costText: `${afkCost} Coin`,
+              canBuy: sim.coins >= afkCost,
+              buy: () => {
+                sim.coins -= afkCost;
+                sim.afkBonusLv += 1;
+                audio.playBeep(700, 0.1);
+                addLog('AFK', `AFK Kristali Sv.${sim.afkBonusLv} aktif!`, 'text-emerald-300');
+              }
+            }
+          ];
+        }
+
+        // Staff & Events tab
+        const modCost = 340 + sim.modCount * 160;
+        const builderCost = 300 + sim.builderCount * 150;
+        const dropPartyCost = 5; // Gems
+        const lagPurgeCost = 220; // Coins
+
+        return [
+          {
+            title: `Moderatör Kirala (${sim.modCount} Aktif)`,
+            desc: 'Hacker botlarını engeller, sohbeti temizler ve CPU yükünü azaltır.',
+            costText: `${modCost} Coin`,
+            canBuy: sim.coins >= modCost,
+            buy: () => {
+              sim.coins -= modCost;
+              sim.modCount += 1;
+              sim.rep += 10;
+              audio.playBeep(660, 0.1);
+              addLog('EKİP', `Yeni Moderatör göreve başladı (Toplam: ${sim.modCount}).`, 'text-cyan-300');
+            }
+          },
+          {
+            title: `Mimar Kirala (${sim.builderCount} Aktif)`,
+            desc: 'Hub estetiğini parlatır ve itibar kazancını artırır.',
+            costText: `${builderCost} Coin`,
+            canBuy: sim.coins >= builderCost,
+            buy: () => {
+              sim.coins -= builderCost;
+              sim.builderCount += 1;
+              sim.rep += 14;
+              audio.playBeep(720, 0.1);
+              addLog('EKİP', `Mimar yeni dekorasyonları yerleştirdi!`, 'text-emerald-300');
+            }
+          },
+          {
+            title: '🎉 Drop Party Başlat',
+            desc: 'Anında +450 Coin, +12 İtibar ve yoğun oyuncu akını tetikler.',
+            costText: `${dropPartyCost} Gem`,
+            canBuy: sim.gems >= dropPartyCost,
+            buy: () => {
+              sim.gems -= dropPartyCost;
+              triggerEvent('Drop Party 🎉', 'Herkese Coin & Kasa Yağmuru!', 'drop_party', 18);
+            }
+          },
+          {
+            title: '🧹 Lag Temizliği (Purge)',
+            desc: 'Aktif DDoS/Lag etkisini anında siler ve TPS değerini 20.0 yapar.',
+            costText: `${lagPurgeCost} Coin`,
+            canBuy: sim.coins >= lagPurgeCost,
+            buy: () => {
+              sim.coins -= lagPurgeCost;
+              sim.eventName = 'Normal Akış';
+              sim.eventDesc = 'Lag Temizlendi • Hub Stabil';
+              sim.eventEffect = 'normal';
+              sim.eventTimer = 0;
+              audio.playBeep(820, 0.1);
+              addLog('SİSTEM', 'Lag Purge tamamlandı! TPS 20.0 seviyesinde.', 'text-emerald-400');
+              renderActions();
+              updateHud();
+            }
+          }
+        ];
+      }
+
+      function renderActions() {
+        const items = getActionsForTab(sim.activeTab);
+        actionList.innerHTML = '';
+        items.forEach((item) => {
+          const btn = document.createElement('button');
+          btn.type = 'button';
+          btn.className = 'action-card rounded-xl p-3 text-left flex items-center justify-between gap-3';
+          btn.disabled = !item.canBuy;
+          btn.innerHTML = `
+            <div class="min-w-0">
+              <div class="text-xs sm:text-sm font-bold text-white truncate">${item.title}</div>
+              <div class="text-[11px] text-slate-300/85 leading-snug mt-0.5">${item.desc}</div>
+            </div>
+            <div class="shrink-0 px-2.5 py-1.5 rounded-lg bg-cyan-400/12 border border-cyan-400/30 mono text-[11px] font-extrabold text-cyan-300">
+              ${item.costText}
+            </div>
+          `;
+          btn.addEventListener('click', () => {
+            if (!item.canBuy) return;
+            item.buy();
+            renderActions();
+            updateHud();
+          });
+          actionList.appendChild(btn);
+        });
+      }
+
+      // =========================================================================
+      // DYNAMIC MINI-EVENTS SYSTEM
+      // =========================================================================
+      function triggerEvent(name, desc, effect, duration = 16) {
+        sim.eventName = name;
+        sim.eventDesc = desc;
+        sim.eventEffect = effect;
+        sim.eventTimer = duration;
+
+        const isBad = effect === 'ddos' || effect === 'hacker_raid';
+        audio.playEventAlert(isBad);
+        showToast(`${name}: ${desc}`);
+        addLog('ETKİNLİK', `${name} — ${desc}`, isBad ? 'text-rose-400' : 'text-amber-300');
+
+        if (effect === 'drop_party') {
+          sim.coins += 450;
+          sim.rep += 12;
+          for (let i = 0; i < 6; i++) spawnAvatar();
+          spawnBurst(canvasW * 0.5, canvasH * 0.5, '#ffbe0b', 24);
+        } else if (effect === 'vip_wave') {
+          sim.rep += 10;
+          for (let i = 0; i < 5; i++) spawnAvatar();
+        } else if (effect === 'hacker_raid') {
+          if (sim.modCount >= 1) {
+            sim.coins += 120;
+            addLog('GÜVENLİK', 'Moderatörler Hacker Bot baskınını savuşturdu!', 'text-emerald-300');
+          } else {
+            sim.coins = Math.max(0, sim.coins - 140);
+          }
+        }
+        updateHud();
+      }
+
+      function rollRandomEvent() {
+        const pool = [
+          { name: 'Drop Party 🎉', desc: 'Kasa yağmuru başladı!', effect: 'drop_party', dur: 16 },
+          { name: 'Çift XP Hafta Sonu ⚡', desc: 'Coin & İtibar kazancı x1.6!', effect: 'double_xp', dur: 20 },
+          { name: 'VIP Dalgası 👑', desc: 'Yüksek rütbeli oyuncular akın ediyor!', effect: 'vip_wave', dur: 18 },
+          { name: 'DDoS / Lag Uyarısı ⚠️', desc: 'Ping arttı! Donanım veya Lag Purge kullan.', effect: 'ddos', dur: 14 },
+          { name: 'Hacker Bot Baskını 🤖', desc: 'Anormal trafik algılandı!', effect: 'hacker_raid', dur: 14 }
+        ];
+        const picked = pool[Math.floor(Math.random() * pool.length)];
+        triggerEvent(picked.name, picked.desc, picked.effect, picked.dur);
+      }
+
+      // =========================================================================
+      // MAIN SIMULATION LOOP (0x / 1x / 2x / 4x)
+      // =========================================================================
+      let econTickAccum = 0;
+      let trafficTickAccum = 0;
+
+      function updateSimulation(dt) {
+        if (sim.speed <= 0) return;
+        const scaledDt = dt * sim.speed;
+
+        // Active event timer
+        if (sim.eventTimer > 0) {
+          sim.eventTimer = Math.max(0, sim.eventTimer - scaledDt);
+          if (sim.eventTimer === 0) {
+            sim.eventName = 'Normal Akış';
+            sim.eventDesc = 'Hub Stabil';
+            sim.eventEffect = 'normal';
+            addLog('SİSTEM', 'Etkinlik sona erdi, sunucu normal akışa döndü.', 'text-slate-300');
+          }
+        } else {
+          eventCooldown -= scaledDt;
+          if (eventCooldown <= 0) {
+            eventCooldown = 24;
+            rollRandomEvent();
+          }
+        }
+
+        // Traffic join/leave
+        trafficTickAccum += scaledDt;
+        const joinInterval = sim.eventEffect === 'vip_wave' || sim.eventEffect === 'drop_party' ? 1.1 : 2.2;
+        if (trafficTickAccum >= joinInterval) {
+          trafficTickAccum = 0;
+          if (avatars.length < getMaxPlayers() && Math.random() < 0.78) {
+            spawnAvatar();
+          } else if (avatars.length > 6 && Math.random() < 0.25) {
+            avatars.pop();
+          }
+        }
+
+        // Real-time Economy Tick (every 1s scaled)
+        econTickAccum += scaledDt;
+        if (econTickAccum >= 1.0) {
+          econTickAccum = 0;
+          const metrics = getServerMetrics();
+          const xpMult = sim.eventEffect === 'double_xp' ? 1.6 : 1.0;
+          const taxMult = 1 + (sim.taxRate - 8) * 0.04;
+          const tpsFactor = metrics.tps / 20.0;
+
+          const shopIncome = avatars.length * (6 + sim.shopLv * 3.5) * taxMult * xpMult * tpsFactor;
+          const crateIncome = sim.crateLv * 9 * xpMult;
+          sim.coins += Math.round(shopIncome + crateIncome);
+
+          // AFK Gem generation
+          if (sim.afkBonusLv > 0 && Math.random() < 0.35 + sim.afkBonusLv * 0.08) {
+            sim.gems += 1;
+          }
+
+          // Reputation drift
+          const repDelta = (sim.builderCount * 0.4 + sim.modCount * 0.3 - (sim.taxRate > 16 ? 0.5 : 0)) * tpsFactor;
+          sim.rep = Math.max(10, Math.min(999, Math.round(sim.rep + repDelta)));
+        }
+
+        // Update Avatars in Living Hub
+        const zoneKeys = Object.keys(ZONES);
+        for (const av of avatars) {
+          av.dwellTimer -= scaledDt;
+          if (av.bubbleTimer > 0) {
+            av.bubbleTimer -= scaledDt;
+            if (av.bubbleTimer <= 0) av.bubble = '';
+          }
+
+          if (av.dwellTimer <= 0) {
+            av.targetZone = zoneKeys[Math.floor(Math.random() * zoneKeys.length)];
+            const z = ZONES[av.targetZone];
+            av.tx = canvasW * z.rx + (Math.random() - 0.5) * 42;
+            av.ty = canvasH * z.ry + (Math.random() - 0.5) * 42;
+            av.dwellTimer = 2.5 + Math.random() * 3.5;
+            if (Math.random() < 0.22) {
+              av.bubble = CHAT_LINES[Math.floor(Math.random() * CHAT_LINES.length)];
+              av.bubbleTimer = 3.0;
+            }
+          }
+
+          const dx = av.tx - av.x;
+          const dy = av.ty - av.y;
+          const dist = Math.hypot(dx, dy);
+          if (dist > 3) {
+            av.x += (dx / dist) * av.speed * scaledDt;
+            av.y += (dy / dist) * av.speed * scaledDt;
+          }
+        }
+
+        // Update Particles
+        for (let i = particles.length - 1; i >= 0; i--) {
+          const p = particles[i];
+          p.x += p.vx * scaledDt;
+          p.y += p.vy * scaledDt;
+          p.life -= scaledDt;
+          if (p.life <= 0) particles.splice(i, 1);
+        }
+
+        updateHud();
+      }
+
+      // =========================================================================
+      // RENDER LIVING HUB CANVAS
+      // =========================================================================
+      function drawHub() {
+        ctx.save();
+        ctx.clearRect(0, 0, canvasW, canvasH);
+
+        // Subtle Neon Grid
+        ctx.strokeStyle = 'rgba(0, 245, 255, 0.06)';
+        ctx.lineWidth = 1;
+        const step = 36;
+        ctx.beginPath();
+        for (let x = 0; x < canvasW; x += step) {
+          ctx.moveTo(x, 0);
+          ctx.lineTo(x, canvasH);
+        }
+        for (let y = 0; y < canvasH; y += step) {
+          ctx.moveTo(0, y);
+          ctx.lineTo(canvasW, y);
+        }
+        ctx.stroke();
+
+        // Draw Hub Zones (Spawn, PvP Arena, Crates/Shops, AFK Zone)
+        Object.entries(ZONES).forEach(([key, z]) => {
+          const zx = canvasW * z.rx;
+          const zy = canvasH * z.ry;
+          const r = Math.min(canvasW, canvasH) * 0.16;
+
+          ctx.save();
+          ctx.fillStyle = `${z.color}14`;
+          ctx.strokeStyle = `${z.color}55`;
+          ctx.lineWidth = 2;
+          ctx.beginPath();
+          ctx.arc(zx, zy, r, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.stroke();
+
+          ctx.fillStyle = z.color;
+          ctx.font = '700 11px "JetBrains Mono", monospace';
+          ctx.textAlign = 'center';
+          ctx.fillText(z.name.toUpperCase(), zx, zy - r - 8);
+          ctx.restore();
+        });
+
+        // Draw Particles
+        for (const p of particles) {
+          ctx.save();
+          ctx.globalAlpha = Math.max(0, p.life / p.maxLife);
+          ctx.fillStyle = p.color;
+          ctx.beginPath();
+          ctx.arc(p.x, p.y, 2.5, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.restore();
+        }
+
+        // Draw Player Avatars & Speech Bubbles
+        for (const av of avatars) {
+          ctx.save();
+          // Avatar glow
+          ctx.fillStyle = av.color;
+          ctx.shadowColor = av.color;
+          ctx.shadowBlur = 10;
+          ctx.beginPath();
+          ctx.arc(av.x, av.y, 6.5, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.shadowBlur = 0;
+
+          // Rank + Name label
+          ctx.font = '600 9px "JetBrains Mono", monospace';
+          ctx.textAlign = 'center';
+          ctx.fillStyle = '#e2e8f0';
+          ctx.fillText(`[${av.rank}] ${av.name}`, av.x, av.y - 11);
+
+          // Speech bubble
+          if (av.bubble) {
+            ctx.font = '600 9px Inter, sans-serif';
+            const padX = 6;
+            const textW = ctx.measureText(av.bubble).width;
+            const bw = textW + padX * 2;
+            const bh = 16;
+            const bx = av.x - bw / 2;
+            const by = av.y - 34;
+
+            ctx.fillStyle = 'rgba(10, 18, 42, 0.9)';
+            ctx.strokeStyle = 'rgba(0, 245, 255, 0.35)';
+            ctx.lineWidth = 1;
+            ctx.beginPath();
+            ctx.roundRect(bx, by, bw, bh, 6);
+            ctx.fill();
+            ctx.stroke();
+
+            ctx.fillStyle = '#f8fafc';
+            ctx.fillText(av.bubble, av.x, by + 11);
+          }
+          ctx.restore();
+        }
+
+        ctx.restore();
+      }
+
+      function updateHud() {
+        const m = getServerMetrics();
+        hudCoins.textContent = Math.floor(sim.coins).toLocaleString('tr-TR');
+        hudGems.textContent = String(sim.gems);
+        hudRep.textContent = Math.floor(sim.rep).toLocaleString('tr-TR');
+
+        hudPlayers.textContent = `${m.curP}/${m.maxP}`;
+        hudTps.textContent = m.tps.toFixed(1);
+        hudTps.className = `mono text-xs font-extrabold ${m.tps >= 18 ? 'text-emerald-400' : m.tps >= 14 ? 'text-amber-300' : 'text-rose-400'}`;
+        hudPing.textContent = `${m.ping}ms`;
+        hudLoad.textContent = `${m.cpuLoad}% / ${m.ramLoad}%`;
+
+        mPlayers.textContent = `${m.curP}/${m.maxP}`;
+        mTps.textContent = m.tps.toFixed(1);
+        mPing.textContent = `${m.ping}ms`;
+        mLoad.textContent = `${m.cpuLoad}%`;
+
+        const timerSuffix = sim.eventTimer > 0 ? ` (${Math.ceil(sim.eventTimer)}s)` : '';
+        activeEventBanner.textContent = `Etkinlik: ${sim.eventName}${timerSuffix} • ${sim.eventDesc}`;
+      }
+
+      // =========================================================================
+      // UI BINDINGS & LOOP
+      // =========================================================================
+      speedButtons.forEach((btn) => {
+        btn.addEventListener('click', () => {
+          speedButtons.forEach((b) => b.classList.remove('active'));
+          btn.classList.add('active');
+          sim.speed = Number(btn.getAttribute('data-speed'));
+          audio.playBeep(500 + sim.speed * 110, 0.06);
+          showToast(sim.speed === 0 ? 'Simülasyon Duraklatıldı' : `Hız: ${sim.speed}x`);
+        });
+      });
+
+      tabButtons.forEach((btn) => {
+        btn.addEventListener('click', () => {
+          tabButtons.forEach((b) => b.classList.remove('active'));
+          btn.classList.add('active');
+          sim.activeTab = btn.getAttribute('data-tab');
+          renderActions();
+        });
+      });
+
+      boostTrafficBtn.addEventListener('click', () => {
+        let added = 0;
+        for (let i = 0; i < 5; i++) {
+          if (spawnAvatar()) added += 1;
+        }
+        audio.playBeep(640, 0.08);
+        showToast(added > 0 ? `+${added} yeni oyuncu Hub'a katıldı!` : 'Sunucu kapasitesi dolu, RAM yükselt!');
+        addLog('TRAFİK', `Davet bağlantısı ile +${added} oyuncu bağlandı.`, 'text-cyan-300');
+        updateHud();
+      });
+
+      saveBtn.addEventListener('click', saveState);
+      resetBtn.addEventListener('click', () => {
+        sim = { ...DEFAULT_STATE };
+        logs = [];
+        avatars = [];
+        for (let i = 0; i < 8; i++) spawnAvatar();
+        saveState();
+        renderActions();
+        renderLogs();
+        updateHud();
+        showToast('Sunucu sıfırlandı');
+      });
+
+      let lastTs = performance.now();
+      function frame(now) {
+        const dt = Math.min(0.05, (now - lastTs) / 1000);
+        lastTs = now;
+        updateSimulation(dt);
+        drawHub();
+        requestAnimationFrame(frame);
+      }
+
+      addLog('SİSTEM', 'NEON RIFT Hub başlatıldı. Oyuncular Spawn noktasından akıyor.', 'text-emerald-400');
+      renderActions();
+      updateHud();
+      requestAnimationFrame(frame);
+    })();
+  </script>
+</body>
+</html>
